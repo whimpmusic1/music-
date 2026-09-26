@@ -11,7 +11,7 @@ from core.queue import MusicQueue
 logger = logging.getLogger(__name__)
 
 _QUALITY_MAP = {
-    "SD_240p": VideoQuality.SD_240p,
+
     "SD_360p": VideoQuality.SD_360p,
     "SD_480p": VideoQuality.SD_480p,
     "HD_720p": VideoQuality.HD_720p,
