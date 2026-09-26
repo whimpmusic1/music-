@@ -12,6 +12,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
 
@@ -28,12 +29,13 @@ async def main():
     await call.start()
 
     logging.info(
-        "Music bot is live - audio + video voice-chat streaming ready."
+        "Music bot is live - audio-only voice-chat streaming ready."
     )
 
     try:
         # Keep the Railway worker alive until the platform stops/restarts it.
         await asyncio.Event().wait()
+
     finally:
         logging.info("Shutting down music bot...")
 
