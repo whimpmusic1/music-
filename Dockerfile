@@ -5,7 +5,10 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     DEBIAN_FRONTEND=noninteractive
 
-# Python 3.11 + FFmpeg + Git
+# ---------------------------------------------------------
+# Install Python + FFmpeg + Git
+# ---------------------------------------------------------
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         python3 \
@@ -28,15 +31,15 @@ RUN python3 -m pip install --break-system-packages --upgrade pip && \
     python3 -m pip install --break-system-packages -r requirements.txt
 
 # ---------------------------------------------------------
-# Install BgUtils PO-token HTTP provider
-# Version MUST match the Python plugin version.
+# Install BgUtils PO-token HTTP provider 2.0.0
 # ---------------------------------------------------------
 
-RUN git clone --depth 1 --branch 2.0.0 \
-    https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git \
-    /opt/bgutil-ytdlp-pot-provider && \
+RUN git clone \
+        --depth 1 \
+        --branch 2.0.0 \
+        https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git \
+        /opt/bgutil-ytdlp-pot-provider && \
     cd /opt/bgutil-ytdlp-pot-provider/server && \
-    npm ci --omit=dev --no-audit --no-fund && \
     npm ci --no-audit --no-fund && \
     npx tsc
 
@@ -48,7 +51,7 @@ COPY . .
 
 # ---------------------------------------------------------
 # Start:
-#   1. BgUtils PO-token server on localhost:4416
+#   1. BgUtils PO-token server
 #   2. Telegram music bot
 # ---------------------------------------------------------
 
