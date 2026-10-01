@@ -30,7 +30,7 @@ _COMMON_OPTS = {
     # Use YouTube TV client instead.
     "extractor_args": {
         "youtube": {
-            "player_client": ["tv"],
+            "player_client": ["default", "web_embedded"],
         },
     },
 
