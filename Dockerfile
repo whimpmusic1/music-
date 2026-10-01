@@ -1,56 +1,55 @@
-FROM python:3.11-slim
+FROM node:26-bookworm-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PATH="/root/.deno/bin:${PATH}"
+    DEBIAN_FRONTEND=noninteractive
 
-# ---------------------------------------------------------
-# System packages
-# ---------------------------------------------------------
+# Python 3.11 + FFmpeg + Git
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-dev \
         ffmpeg \
         ca-certificates \
-        git \
-        curl \
-        unzip && \
+        git && \
     rm -rf /var/lib/apt/lists/*
 
-# ---------------------------------------------------------
-# Install Deno
-# yt-dlp currently recommends Deno for EJS
-# ---------------------------------------------------------
-RUN curl -fsSL https://deno.land/install.sh | sh
+WORKDIR /app
 
 # ---------------------------------------------------------
-# Python dependencies
+# Install Python dependencies
 # ---------------------------------------------------------
-WORKDIR /app
 
 COPY requirements.txt .
 
-RUN python -m pip install --upgrade pip && \
-    python -m pip install -r requirements.txt && \
-    python -m pip install -U yt-dlp-ejs
+RUN python3 -m pip install --break-system-packages --upgrade pip && \
+    python3 -m pip install --break-system-packages -r requirements.txt
 
 # ---------------------------------------------------------
-# Install bgutil PO-token provider plugin
+# Install BgUtils PO-token HTTP provider
+# Version MUST match the Python plugin version.
 # ---------------------------------------------------------
-RUN mkdir -p /root/yt-dlp-plugins/bgutil-ytdlp-pot-provider && \
-    git clone --depth 1 \
-        https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git \
-        /tmp/bgutil-ytdlp-pot-provider && \
-    cp -r /tmp/bgutil-ytdlp-pot-provider/plugin/* \
-        /root/yt-dlp-plugins/bgutil-ytdlp-pot-provider/ && \
-    rm -rf /tmp/bgutil-ytdlp-pot-provider
+
+RUN git clone --depth 1 --branch 2.0.0 \
+    https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git \
+    /opt/bgutil-ytdlp-pot-provider && \
+    cd /opt/bgutil-ytdlp-pot-provider/server && \
+    npm ci --omit=dev --no-audit --no-fund && \
+    npm ci --no-audit --no-fund && \
+    npx tsc
 
 # ---------------------------------------------------------
-# Project
+# Copy bot
 # ---------------------------------------------------------
+
 COPY . .
 
 # ---------------------------------------------------------
-# Start bot
+# Start:
+#   1. BgUtils PO-token server on localhost:4416
+#   2. Telegram music bot
 # ---------------------------------------------------------
-CMD ["python", "bot.py"]
+
+CMD ["sh", "-c", "cd /opt/bgutil-ytdlp-pot-provider/server && node build/main.js --host 127.0.0.1 --port 4416 & exec python3 bot.py"]
