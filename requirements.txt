@@ -1,6 +1,6 @@
 # Telegram voice/video calls + Pyrogram integration
 py-tgcalls[pyrogram]==2.3.3
-Pyrogram==2.0.106
+pyrogrammod==2.4.1
 tgcrypto==1.2.5
 
 # Media resolver
