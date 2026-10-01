@@ -30,11 +30,7 @@ _COMMON_OPTS = {
     # instead of forcing only mweb.
     "extractor_args": {
         "youtube": {
-            "player_client": [
-                "web",
-                "mweb",
-                "android_vr",
-            ],
+            "player_client": ["mweb"],
         },
 
         # Local BgUtils PO-token provider.
