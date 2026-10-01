@@ -1,20 +1,22 @@
-
 import asyncio
+import os
 
 import yt_dlp
 
 
-# YouTube has increasingly started challenging the normal web client,
-# especially from cloud/server IP addresses such as Railway.
+# ---------------------------------------------------------
+# YouTube configuration
+# ---------------------------------------------------------
+# Current yt-dlp guidance recommends the mweb client together
+# with a PO-token provider.
 #
-# Try clients that are less dependent on the normal YouTube web session.
-# web_embedded is kept as a fallback because it does not require a PO token,
-# although it only works for videos that YouTube exposes to the embedded client.
-_YOUTUBE_EXTRACTOR_ARGS = {
-    "youtube": {
-        "player_client": "mweb",
-    }
-}
+# bgutil is installed as a yt-dlp plugin by the Dockerfile.
+# ---------------------------------------------------------
+
+BGUTIL_SCRIPT_PATH = os.environ.get(
+    "BGUTIL_SCRIPT_PATH",
+    "/root/yt-dlp-plugins/bgutil-ytdlp-pot-provider/server/build/generate_once.js",
+)
 
 
 _COMMON_OPTS = {
@@ -26,29 +28,42 @@ _COMMON_OPTS = {
     "nocheckcertificate": True,
     "skip_download": True,
 
-    # Use the YouTube clients above instead of the normal default client set.
-    "extractor_args": _YOUTUBE_EXTRACTOR_ARGS,
+    # Allow yt-dlp to use its external JavaScript challenge solver.
+    "js_runtimes": {
+        "deno": {},
+    },
 
-    # Give yt-dlp a little time between retries when YouTube temporarily
-    # rejects a request.
-    "retries": 3,
-    "fragment_retries": 3,
+    # Allow the installed EJS package to be used.
+    "remote_components": {
+        "ejs": "github",
+    },
+}
+
+
+_YOUTUBE_EXTRACTOR_ARGS = {
+    "youtube": {
+        # Current recommended client when using a PO-token provider.
+        "player_client": "mweb",
+    },
+
+    # bgutil PO-token generation script.
+    "youtubepot-bgutilscript": {
+        "script_path": BGUTIL_SCRIPT_PATH,
+    },
 }
 
 
 _AUDIO_OPTS = {
     **_COMMON_OPTS,
     "format": "bestaudio/best",
+    "extractor_args": _YOUTUBE_EXTRACTOR_ARGS,
 }
 
 
 _VIDEO_OPTS = {
     **_COMMON_OPTS,
-    "format": (
-        "best[height<=480][ext=mp4]/"
-        "best[height<=480]/"
-        "best"
-    ),
+    "format": "best[height<=480][ext=mp4]/best[height<=480]/best",
+    "extractor_args": _YOUTUBE_EXTRACTOR_ARGS,
 }
 
 
@@ -58,25 +73,23 @@ def _extract(query: str, video: bool) -> dict:
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(query, download=False)
 
-        if "entries" in info:
-            entries = info.get("entries") or []
-
-            if not entries:
-                raise RuntimeError(
-                    "YouTube search returned no playable results."
-                )
-
-            info = entries[0]
+        if "entries" in info and info["entries"]:
+            info = info["entries"][0]
 
         return info
 
 
 async def get_stream_info(query: str, video: bool = False) -> dict:
     """
-    Resolve a search term or direct URL to a playable stream.
+    Resolve a search term or direct URL using yt-dlp.
 
-    Audio mode is intended for the music bot and returns a direct audio
-    stream URL without downloading the media to disk.
+    For YouTube:
+        - mweb client is used
+        - bgutil supplies the PO token
+        - yt-dlp-ejs handles JavaScript challenges
+        - Deno provides the JavaScript runtime
+
+    The resulting direct media URL is passed to PyTgCalls.
     """
 
     loop = asyncio.get_running_loop()
@@ -88,56 +101,18 @@ async def get_stream_info(query: str, video: bool = False) -> dict:
         video,
     )
 
-    if not info:
-        raise RuntimeError(
-            "yt-dlp returned no information for this query."
-        )
-
     stream_url = info.get("url")
 
-    # Some YouTube clients return formats instead of a top-level URL.
-    if not stream_url:
-        formats = info.get("formats") or []
-
-        if video:
-            # Prefer an MP4 video format when available.
-            video_formats = [
-                f
-                for f in formats
-                if f.get("url")
-                and f.get("ext") == "mp4"
-                and f.get("height")
-                and f.get("height") <= 480
-            ]
-
-            if video_formats:
-                stream_url = video_formats[-1]["url"]
-
-        if not stream_url:
-            # Prefer audio-only formats.
-            audio_formats = [
-                f
-                for f in formats
-                if f.get("url")
-                and (
-                    f.get("vcodec") == "none"
-                    or f.get("acodec") != "none"
-                )
-            ]
-
-            if audio_formats:
-                stream_url = audio_formats[-1]["url"]
-
-        if not stream_url and formats:
-            for fmt in reversed(formats):
-                if fmt.get("url"):
-                    stream_url = fmt["url"]
-                    break
+    if not stream_url and info.get("formats"):
+        # Select the last available format as fallback.
+        for fmt in reversed(info["formats"]):
+            if fmt.get("url"):
+                stream_url = fmt["url"]
+                break
 
     if not stream_url:
         raise RuntimeError(
-            "YouTube returned metadata but no playable stream URL. "
-            "The video may require authentication or a PO token."
+            "yt-dlp could not resolve a playable stream for this query."
         )
 
     return {
@@ -147,4 +122,3 @@ async def get_stream_info(query: str, video: bool = False) -> dict:
         "webpage_url": info.get("webpage_url"),
         "thumbnail": info.get("thumbnail"),
     }
-
