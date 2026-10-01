@@ -12,7 +12,7 @@ import yt_dlp
 # although it only works for videos that YouTube exposes to the embedded client.
 _YOUTUBE_EXTRACTOR_ARGS = {
     "youtube": {
-        "player_client": "android,web_embedded",
+        "player_client": "mweb",
     }
 }
 
