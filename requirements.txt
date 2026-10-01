@@ -6,7 +6,6 @@ tgcrypto==1.2.5
 # Media resolver
 # Keep yt-dlp reasonably current because extractor changes frequently.
 yt-dlp[default]>=2026.1.0
-yt-dlp-ejs
 
 bgutil-ytdlp-pot-provider==2.0.0
 
