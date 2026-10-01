@@ -1,5 +1,15 @@
 import logging
 
+import pyrogram.errors
+
+# PyTgCalls 2.3.3 expects this older error name.
+# Newer PyrogramMod versions expose GroupCallForbidden instead.
+if not hasattr(pyrogram.errors, "GroupcallForbidden"):
+    if hasattr(pyrogram.errors, "GroupCallForbidden"):
+        pyrogram.errors.GroupcallForbidden = (
+            pyrogram.errors.GroupCallForbidden
+        )
+        
 from pytgcalls import PyTgCalls
 from pytgcalls import filters as fl
 from pytgcalls.types import AudioQuality, MediaStream, StreamEnded
